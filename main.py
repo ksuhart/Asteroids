@@ -43,6 +43,12 @@ def main():
     StarField.containers = (updatable, drawable)
     starfield = StarField(SCREEN_WIDTH, SCREEN_HEIGHT, count=150)
 
+    from particle import Particle
+    from particle_explosion import ParticleExplosion
+
+    Particle.containers = (updatable, drawable)
+
+
 
     clock = pygame.time.Clock()
     dt = 0
@@ -146,7 +152,7 @@ def main():
 
                         # Spawn explosion BEFORE splitting
                         pos = asteroid.position.copy()
-                        Explosion(pos.x, pos.y)
+                        ParticleExplosion(pos.x, pos.y, count=35)
 
                         asteroid.split()
 
