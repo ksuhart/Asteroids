@@ -42,6 +42,29 @@ class Asteroid(CircleShape):
 
         pygame.draw.polygon(screen, "white", rotated, width=2)
 
+        # Base asteroid color (brown)
+        base_color = (139, 69, 19)      # SaddleBrown
+        outline_color = (100, 50, 10)   # Darker brown
+
+        # Draw filled polygon
+        pygame.draw.polygon(screen, base_color, rotated)
+
+        # Draw outline
+        pygame.draw.polygon(screen, outline_color, rotated, width=2)
+
+        # Simple shading: highlight on the "sunlit" side
+        highlight = []
+        for x, y in rotated:
+            # shift points slightly toward top-left for highlight
+            highlight.append((x - 3, y - 3))
+
+        highlight_color = (205, 133, 63)  # Peru (lighter brown)
+        pygame.draw.polygon(screen, highlight_color, highlight, width=1)
+
+
+
+
+
     def update(self, dt):
         self.position += self.velocity * dt
         self.rotation += self.rotation_speed * dt
