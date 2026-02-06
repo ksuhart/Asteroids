@@ -39,6 +39,11 @@ def main():
     Shot.containers = (shots, updatable, drawable)
     Explosion.containers = (updatable, drawable)
 
+    from starfield import StarField
+    StarField.containers = (updatable, drawable)
+    starfield = StarField(SCREEN_WIDTH, SCREEN_HEIGHT, count=150)
+
+
     clock = pygame.time.Clock()
     dt = 0
 
@@ -82,6 +87,14 @@ def main():
                         s.kill()
 
                     asteroid_field = AsteroidField()
+
+                    # Reset starfield
+                    from starfield import StarField
+                    StarField.containers = (updatable, drawable)
+                    starfield = StarField(SCREEN_WIDTH, SCREEN_HEIGHT, count=150)
+
+
+
                     game_state = "playing"
 
             screen.fill("black")
