@@ -8,27 +8,43 @@ from logger import log_state, log_event
 from shot import Shot
 import sys
 
+def respawn_player(player):
+    player.position.x = SCREEN_WIDTH / 2
+    player.position.y = SCREEN_HEIGHT / 2
+    player.velocity = pygame.Vector2(0, 0)
+    player.rotation = 0
+
 def main():
     print("Starting Asteroids with pygame version: 2.6.1")
     print(f"Screen width: {SCREEN_WIDTH}")
     print(f"Screen height: {SCREEN_HEIGHT}")
-
+    
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
+    font = pygame.font.SysFont(None, 36)
+    
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
+
     asteroids = pygame.sprite.Group()
     shots = pygame.sprite.Group()
+
     Player.containers = (updatable, drawable)
     Asteroid.containers = (asteroids, updatable, drawable)
+
     AsteroidField.containers = (updatable,)
     Shot.containers = (shots, updatable, drawable)
+
     clock = pygame.time.Clock()
     dt = 0
 
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+    lives = 3
+
     asteroid_field = AsteroidField()
+
+    score = 0
+
 
     while True:
 
@@ -41,10 +57,25 @@ def main():
         updatable.update(dt)
 
         for asteroid in asteroids:
-            if player.collides_with(asteroid):
+            if player.invincible_timer <= 0 and player.collides_with(asteroid):
                 log_event("player_hit")
-                print("Game over!")
-                sys.exit()
+                lives -= 1
+
+            
+                if lives <= 0:
+                    print("Game over!")
+                    sys.exit()
+
+                # Remove asteroids too close to respawn point
+                for a in asteroids:
+                    if a.position.distance_to(pygame.Vector2(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)) < 100:
+                        a.kill()
+
+                # Respawn the player
+                respawn_player(player)
+                player.make_invincible(2)
+                break
+
 
         for asteroid in asteroids:
             for shot in shots:
@@ -52,11 +83,28 @@ def main():
                     log_event("asteroid_shot")
                     shot.kill()
                     asteroid.split()
+                    #add points
+                    if asteroid.radius > 40:
+                        score += 20
+                    elif asteroid.radius > 20:
+                        score += 50
+                    else:
+                        score += 100
+
 
 
         screen.fill("black")
         for obj in drawable:
             obj.draw(screen)
+
+
+        score_surface = font.render(f"Score: {score}", True, "white")
+        screen.blit(score_surface, (10, 10))
+
+        lives_surface = font.render(f"Lives: {lives}", True, "white")
+        screen.blit(lives_surface, (10, 40))
+
+
 
 
         pygame.display.flip()
