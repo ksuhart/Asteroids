@@ -6,7 +6,12 @@ from asteroid import Asteroid
 from asteroidfield import AsteroidField
 from logger import log_state, log_event
 from shot import Shot
+from explosion import Explosion
 import sys
+
+
+
+
 
 def respawn_player(player):
     player.position.x = SCREEN_WIDTH / 2
@@ -34,6 +39,7 @@ def main():
 
     AsteroidField.containers = (updatable,)
     Shot.containers = (shots, updatable, drawable)
+    Explosion.containers = (updatable, drawable)
 
     clock = pygame.time.Clock()
     dt = 0
@@ -45,6 +51,7 @@ def main():
 
     score = 0
 
+    
 
     while True:
 
@@ -82,6 +89,12 @@ def main():
                 if shot.collides_with(asteroid):
                     log_event("asteroid_shot")
                     shot.kill()
+
+                    # Spawn explosion BEFORE splitting
+                    pos = asteroid.position.copy()
+                    Explosion(pos.x, pos.y)
+                    print("Explosion spawned")
+
                     asteroid.split()
                     #add points
                     if asteroid.radius > 40:
