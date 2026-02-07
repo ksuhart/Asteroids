@@ -32,13 +32,16 @@ def main():
 
     asteroids = pygame.sprite.Group()
     shots = pygame.sprite.Group()
-
+    particles = pygame.sprite.Group()
     Player.containers = (updatable, drawable)
     Asteroid.containers = (asteroids, updatable, drawable)
     AsteroidField.containers = (updatable,)
     Shot.containers = (shots, updatable, drawable)
     Explosion.containers = (updatable, drawable)
-
+    from ship_explosion import ShipExplosion
+    ShipExplosion.containers = (particles, updatable, drawable)
+    from shipparticle import ShipParticle
+    ShipParticle.containers = (particles, updatable, drawable)
     from starfield import StarField
     StarField.containers = (updatable, drawable)
     starfield = StarField(SCREEN_WIDTH, SCREEN_HEIGHT, count=150)
@@ -46,7 +49,7 @@ def main():
     from particle import Particle
     from particle_explosion import ParticleExplosion
 
-    Particle.containers = (updatable, drawable)
+    Particle.containers = (particles, updatable, drawable)
 
 
 
@@ -150,7 +153,7 @@ def main():
 
                     # Ship explosion BEFORE respawn
 
-                        ParticleExplosion(player.position.x, player.position.y, count=50)
+                        ShipExplosion(player.position.x, player.position.y)
 
                         if lives <= 0:
                             game_state = "game_over"
@@ -182,7 +185,7 @@ def main():
 
                         # Spawn explosion BEFORE splitting
                         pos = asteroid.position.copy()
-                        ParticleExplosion(pos.x, pos.y, count=35)
+                        ParticleExplosion(pos.x, pos.y)
 
                         asteroid.split()
 

@@ -1,5 +1,9 @@
 import random
+import pygame
 from particle import Particle
+
+
+
 
 class ParticleExplosion:
     containers = None  # set in main
@@ -20,3 +24,4 @@ class ParticleExplosion:
 
             Particle(x, y, angle, speed, lifetime, color)
 
+        
