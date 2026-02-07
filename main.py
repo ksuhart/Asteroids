@@ -57,6 +57,9 @@ def main():
     lives = 3
     asteroid_field = AsteroidField()
     score = 0
+    respawn_timer = 0
+
+
 
     while True:
         # ---------------- START SCREEN ----------------
@@ -121,27 +124,54 @@ def main():
 
             updatable.update(dt)
 
-            # Player–asteroid collision
-            for asteroid in asteroids:
-                if player.invincible_timer <= 0 and player.collides_with(asteroid):
-                    log_event("player_hit")
-                    lives -= 1
+            # Handle delayed respawn
+            if respawn_timer > 0:
+                respawn_timer -= dt
+                if respawn_timer <= 0:
 
-                    if lives <= 0:
-                        game_state = "game_over"
-                        break
+                    # Remove any leftover player sprite
+                    for p in updatable:
+                        if isinstance(p, Player):
+                            p.kill()
+
+                    # Create new player
+
+                    player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+                    player.make_invincible(2)
+
+                  # Skip collision logic until ship is fully respawned
+            else:
+
+            # Player–asteroid collision
+                for asteroid in asteroids:
+                    if player.invincible_timer <= 0 and player.collides_with(asteroid):
+                        log_event("player_hit")
+                        lives -= 1
+
+                    # Ship explosion BEFORE respawn
+
+                        ParticleExplosion(player.position.x, player.position.y, count=50)
+
+                        if lives <= 0:
+                            game_state = "game_over"
+                            break
 
                     # Remove asteroids too close to respawn point
-                    for a in asteroids:
-                        if a.position.distance_to(
-                            pygame.Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
-                        ) < 100:
-                            a.kill()
+                        for a in asteroids:
+                            if a.position.distance_to(
+                                pygame.Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+                            ) < 100:
+                                a.kill()
 
                     # Respawn the player
-                    respawn_player(player)
-                    player.make_invincible(2)
-                    break
+                    #respawn_player(player)                testing respawn delay code
+                    #player.make_invincible(2)
+
+                        respawn_timer = 2.0  # two second delay
+                        player.kill()        # hide ship during explosion
+
+
+                        break
 
             # Shot–asteroid collision
             for asteroid in asteroids:
