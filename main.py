@@ -75,9 +75,12 @@ def main():
 
             screen.fill("black")
             title = font.render("ASTEROIDS", True, "white")
-            prompt = font.render("Press SPACE to Start", True, "white")
             screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 200))
-            screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 300))
+            blink = (pygame.time.get_ticks() // 500) % 2 == 0
+            if blink:
+                prompt = font.render("Press SPACE to Start", True, "white")
+                #screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 200))
+                screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 300))
             pygame.display.flip()
             continue
 
@@ -111,9 +114,12 @@ def main():
 
             screen.fill("black")
             over = font.render("GAME OVER", True, "white")
-            prompt = font.render("Press SPACE to Restart", True, "white")
             screen.blit(over, (SCREEN_WIDTH // 2 - over.get_width() // 2, 200))
-            screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 300))
+            blink = (pygame.time.get_ticks() // 500) % 2 == 0
+            if blink:
+                prompt = font.render("Press SPACE to Restart", True, "white")
+                #screen.blit(over, (SCREEN_WIDTH // 2 - over.get_width() // 2, 200))
+                screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 300))
             pygame.display.flip()
             continue
 
