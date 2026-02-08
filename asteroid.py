@@ -10,28 +10,26 @@ class Asteroid(CircleShape):
     def __init__(self, x, y, radius):
         super().__init__(x, y, radius)
 
-        # Generate lumpy shape once
+        # Generate lumpy shape once (in local space)
         self.points = self.generate_shape()
 
-        #Generate craters once
+        # Generate craters once (in local space)
         self.craters = []
         num_craters = random.randint(2, 5)
-
         for _ in range(num_craters):
             angle = random.uniform(0, math.tau)
             dist = random.uniform(0, self.radius * 0.6)
-
-            # crater center in local asteriod space
             cx = math.cos(angle) * dist
             cy = math.sin(angle) * dist
             r = random.randint(3, 7)
-
             self.craters.append((cx, cy, r))
-
 
         # Rotation
         self.rotation = 0
         self.rotation_speed = random.uniform(-1.0, 1.0)
+
+        # Pre-render asteroid appearance to a surface
+        self.base_image = self.build_base_image()
 
     def generate_shape(self):
         points = []
@@ -39,105 +37,96 @@ class Asteroid(CircleShape):
 
         for i in range(num_points):
             angle = (i / num_points) * 2 * math.pi
-
             offset = random.uniform(-self.radius * 0.3, self.radius * 0.3)
             r = self.radius + offset
-
             x = math.cos(angle) * r
             y = math.sin(angle) * r
             points.append((x, y))
 
         return points
 
-    def draw(self, screen):
-        rotated = []
-        for x, y in self.points:
-            rx = x * math.cos(self.rotation) - y * math.sin(self.rotation)
-            ry = x * math.sin(self.rotation) + y * math.cos(self.rotation)
-            rotated.append((self.position.x + rx, self.position.y + ry))
+    def build_base_image(self):
+        size = self.radius * 2
+        center = self.radius
 
-        pygame.draw.polygon(screen, "white", rotated, width=2)
+        # Surface with alpha
+        surf = pygame.Surface((size, size), pygame.SRCALPHA)
 
-        # Base asteroid color (brown)
+        # Colors
         base_color = (139, 69, 19)      # SaddleBrown
         outline_color = (100, 50, 10)   # Darker brown
         highlight_color = (205, 133, 63)
 
-        # Draw filled polygon
-        pygame.draw.polygon(screen, base_color, rotated)
+        # Local polygon points shifted to center
+        local_points = []
+        for x, y in self.points:
+            local_points.append((center + x, center + y))
 
-    # RADIAL SHADING (3D effect)
-    # -----------------------
-        for i in range(self.radius, 0, -1):
-            t = i / self.radius
-            shade = int(139 - t * 60)
-            shade = max(40, min(200, shade))
-            pygame.draw.circle(
-                screen,
-                (shade, shade // 2, shade // 3),
-                (int(self.position.x), int(self.position.y)),
-                i
-            )
+        # Base polygon fill
+        pygame.draw.polygon(surf, base_color, local_points)
 
+        # -----------------------
+        # DIRECTIONAL SHADING (polygon-aware, precomputed)
+        # -----------------------
+        light_dir = pygame.Vector2(-1, -1).normalize()
 
+        # Mask from polygon
+        mask = pygame.mask.from_surface(surf)
+        shading_surf = pygame.Surface((size, size), pygame.SRCALPHA)
 
+        for py in range(size):
+            for px in range(size):
+                if mask.get_at((px, py)):
+                    vx = px - center
+                    vy = py - center
+                    v = pygame.Vector2(vx, vy)
+                    if v.length() > 0:
+                        v = v.normalize()
+                        dot = max(0, v.dot(light_dir))  # 0–1
+                        shade = int(80 + dot * 80)      # 80–160
+                        shading_surf.set_at((px, py), (shade, shade, shade, 255))
 
+        # Multiply shading onto base color
+        surf.blit(shading_surf, (0, 0), special_flags=pygame.BLEND_MULT)
 
+        # Outline
+        pygame.draw.polygon(surf, outline_color, local_points, width=2)
 
-        # Draw outline
-        pygame.draw.polygon(screen, outline_color, rotated, width=2)
+        # Highlight (shifted toward top-left)
+        highlight_points = [(x - 3, y - 3) for (x, y) in local_points]
+        pygame.draw.polygon(surf, highlight_color, highlight_points, width=1)
 
-        # Simple shading: highlight on the "sunlit" side
-        highlight = [(x - 3, y - 3) for (x, y) in rotated]
-        #for x, y in rotated:
-            # shift points slightly toward top-left for highlight
-            #highlight.append((x - 3, y - 3))
-
-        #highlight_color = (205, 133, 63)  # Peru (lighter brown)
-        pygame.draw.polygon(screen, highlight_color, highlight, width=1)
-
-
-    # -----------------------
-    # CRATERS (rotated)
-    # -----------------------
+        # Craters (drawn in local space)
         for cx, cy, r in self.craters:
-        # rotate crater center
-            rx = cx * math.cos(self.rotation) - cy * math.sin(self.rotation)
-            ry = cx * math.sin(self.rotation) + cy * math.cos(self.rotation)
+            crater_x = int(center + cx)
+            crater_y = int(center + cy)
 
-            crater_x = int(self.position.x + rx)
-            crater_y = int(self.position.y + ry)
+            pygame.draw.circle(surf, (60, 40, 30), (crater_x, crater_y), r)
+            pygame.draw.circle(surf, (30, 20, 15), (crater_x, crater_y), r, 1)
+            pygame.draw.circle(surf, (20, 10, 5), (crater_x + 1, crater_y + 1), r - 1)
 
-        # dark crater fill
-            pygame.draw.circle(screen, (60, 40, 30), (crater_x, crater_y), r)
-
-        # crater rim
-            pygame.draw.circle(screen, (30, 20, 15), (crater_x, crater_y), r, 1)
-
-        # inner shadow for depth
-            pygame.draw.circle(screen, (20, 10, 5), (crater_x + 1, crater_y + 1), r - 1)
-
-    # -----------------------
-    # TEXTURE (random speckles)
-    # -----------------------
-        for _ in range(10):
+        # Texture speckles
+        for _ in range(10 * max(1, self.radius // 10)):
             tx = random.randint(-self.radius, self.radius)
             ty = random.randint(-self.radius, self.radius)
-
             if tx * tx + ty * ty <= self.radius * self.radius:
-                screen.set_at(
-                    (int(self.position.x + tx), int(self.position.y + ty)),
-                    (90, 70, 50)
-                )
+                sx = int(center + tx)
+                sy = int(center + ty)
+                if 0 <= sx < size and 0 <= sy < size:
+                    surf.set_at((sx, sy), (90, 70, 50, 255))
 
+        return surf
 
-
-
-
+    def draw(self, screen):
+        # Rotate pre-rendered image
+        rotated_image = pygame.transform.rotate(self.base_image, math.degrees(self.rotation))
+        rect = rotated_image.get_rect(center=(self.position.x, self.position.y))
+        screen.blit(rotated_image, rect)
 
     def update(self, dt):
         self.position += self.velocity * dt
         self.rotation += self.rotation_speed * dt
+
         # Wrap around screen
         if self.position.x < 0:
             self.position.x += SCREEN_WIDTH
@@ -148,9 +137,6 @@ class Asteroid(CircleShape):
             self.position.y += SCREEN_HEIGHT
         elif self.position.y > SCREEN_HEIGHT:
             self.position.y -= SCREEN_HEIGHT
-
-
-
 
     def split(self):
         # Remove this asteroid
@@ -172,4 +158,10 @@ class Asteroid(CircleShape):
 
         a1.velocity = vel1 * 1.2
         a2.velocity = vel2 * 1.2
+
+
+
+
+
+
 
