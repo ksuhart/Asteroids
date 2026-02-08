@@ -75,12 +75,14 @@ def main():
                     game_state = "playing"
 
             screen.fill("black")
-            starfield.update(dt)
+            #starfield.update(dt)
+            t = pygame.time.get_ticks() / 500
+            starfield.twinkle(t)
             starfield.draw(screen)
 
 
             title = font.render("ASTEROIDS", True, "white")
-            t = pygame.time.get_ticks() / 300
+            t2 = pygame.time.get_ticks() / 300
             offset = int(10 * math.sin(t))
             title_y = 200 + offset
 
@@ -114,7 +116,7 @@ def main():
 
                     # Reset starfield
                     from starfield import StarField
-                    StarField.containers = (updatable, drawable)
+                    #StarField.containers = (updatable, drawable)
                     starfield = StarField(SCREEN_WIDTH, SCREEN_HEIGHT, count=150)
 
 
@@ -123,6 +125,8 @@ def main():
 
             screen.fill("black")
             #starfield.update(dt)
+            t = pygame.time.get_ticks() / 500
+            starfield.twinkle(t)
             starfield.draw(screen)
             over = font.render("GAME OVER", True, "white")
             screen.blit(over, (SCREEN_WIDTH // 2 - over.get_width() // 2, 200))

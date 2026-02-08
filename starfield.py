@@ -23,3 +23,7 @@ class StarField:
     def draw(self, screen):
         for star in self.stars:
             star.draw(screen)
+
+    def twinkle(self, time):
+        for star in self.stars:
+            star.twinkle(time)
