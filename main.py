@@ -1,4 +1,5 @@
 import pygame
+import math
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from logger import log_state, log_event
 from player import Player
@@ -43,7 +44,7 @@ def main():
     from shipparticle import ShipParticle
     ShipParticle.containers = (particles, updatable, drawable)
     from starfield import StarField
-    StarField.containers = (updatable, drawable)
+    #StarField.containers = (updatable, drawable)
     starfield = StarField(SCREEN_WIDTH, SCREEN_HEIGHT, count=150)
 
     from particle import Particle
@@ -74,7 +75,15 @@ def main():
                     game_state = "playing"
 
             screen.fill("black")
+            starfield.update(dt)
+            starfield.draw(screen)
+
+
             title = font.render("ASTEROIDS", True, "white")
+            t = pygame.time.get_ticks() / 300
+            offset = int(10 * math.sin(t))
+            title_y = 200 + offset
+
             screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 200))
             blink = (pygame.time.get_ticks() // 500) % 2 == 0
             if blink:
@@ -113,6 +122,8 @@ def main():
                     game_state = "playing"
 
             screen.fill("black")
+            #starfield.update(dt)
+            starfield.draw(screen)
             over = font.render("GAME OVER", True, "white")
             screen.blit(over, (SCREEN_WIDTH // 2 - over.get_width() // 2, 200))
             blink = (pygame.time.get_ticks() // 500) % 2 == 0
@@ -126,12 +137,17 @@ def main():
         # ---------------- PLAYING STATE ----------------
         if game_state == "playing":
             log_state()
+            screen.fill("black")
+            starfield.update(dt)
+            starfield.draw(screen)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
 
             updatable.update(dt)
+            for sprite in drawable:
+                sprite.draw(screen)
 
             # Handle delayed respawn
             if respawn_timer > 0:
@@ -204,7 +220,7 @@ def main():
                             score += 100
 
             # Drawing
-            screen.fill("black")
+            #screen.fill("black")
             for obj in drawable:
                 obj.draw(screen)
 
