@@ -1,5 +1,6 @@
 import pygame
 import math
+import colorsys
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from logger import log_state, log_event
 from player import Player
@@ -67,31 +68,49 @@ def main():
 
     while True:
         # ---------------- START SCREEN ----------------
+        
         if game_state == "start":
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                     game_state = "playing"
-
+    
             screen.fill("black")
-            #starfield.update(dt)
             t = pygame.time.get_ticks() / 500
             starfield.twinkle(t)
             starfield.draw(screen)
+    
+            # Wave effect with pulsing brightness
+            title_text = "ASTEROIDS"
+            big_font = pygame.font.SysFont(None, 56)
+            letter_spacing = 35
+            total_width = len(title_text) * letter_spacing
+            x_start = SCREEN_WIDTH // 2 - total_width // 2
+    
+            # Pulsing brightness
+            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 400)
+            brightness = int(200 + 55 * pulse)
+            color = (brightness, brightness, brightness)
+    
+            # Draw each letter with wave
+            for i, letter in enumerate(title_text):
+                hue = ((pygame.time.get_ticks() / 20) + i * 40) % 360
+                rgb = colorsys.hsv_to_rgb(hue / 360, 0.8, 1.0)
+                color = (int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
 
-
-            title = font.render("ASTEROIDS", True, "white")
-            t2 = pygame.time.get_ticks() / 300
-            offset = int(10 * math.sin(t))
-            title_y = 200 + offset
-
-            screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 200))
+                wave = int(15 * math.sin(pygame.time.get_ticks() / 200 + i * 0.5))
+                letter_surface = big_font.render(letter, True, color)
+                x_pos = x_start + (i * letter_spacing)
+                y_pos = 180 + wave
+                screen.blit(letter_surface, (x_pos, y_pos))
+    
+            # Blinking prompt
             blink = (pygame.time.get_ticks() // 500) % 2 == 0
             if blink:
                 prompt = font.render("Press SPACE to Start", True, "white")
-                #screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 200))
                 screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 300))
+    
             pygame.display.flip()
             continue
 
