@@ -110,3 +110,61 @@ class Player(CircleShape):
 
     def make_invincible(self, seconds):
         self.invincible_timer = seconds
+
+
+  # ========== TRIANGULAR COLLISION DETECTION ==========
+    
+    def collides_with(self, other):
+        # Get triangle vertices
+        triangle = self.triangle()
+        
+        # Method 1: Check if circle center is inside triangle
+        if self._point_in_triangle(other.position, triangle):
+            return True
+        
+        # Method 2: Check distance from circle center to each edge
+        for i in range(3):
+            p1 = triangle[i]
+            p2 = triangle[(i + 1) % 3]
+            
+            # Distance from circle center to line segment
+            dist = self._point_to_segment_distance(other.position, p1, p2)
+            if dist < other.radius:
+                return True
+        
+        return False
+
+    def _point_to_segment_distance(self, point, seg_a, seg_b):
+        # Calculate distance from point to line segment
+        line_vec = seg_b - seg_a
+        point_vec = point - seg_a
+        line_len = line_vec.length()
+        
+        if line_len == 0:
+            return point_vec.length()
+        
+        # Project point onto line
+        t = max(0, min(1, point_vec.dot(line_vec) / (line_len * line_len)))
+        projection = seg_a + line_vec * t
+        
+        return (point - projection).length()
+
+    def _point_in_triangle(self, point, triangle):
+        a, b, c = triangle
+        
+        v0 = c - a
+        v1 = b - a
+        v2 = point - a
+        
+        dot00 = v0.dot(v0)
+        dot01 = v0.dot(v1)
+        dot02 = v0.dot(v2)
+        dot11 = v1.dot(v1)
+        dot12 = v1.dot(v2)
+        
+        inv_denom = 1 / (dot00 * dot11 - dot01 * dot01)
+        u = (dot11 * dot02 - dot01 * dot12) * inv_denom
+        v = (dot00 * dot12 - dot01 * dot02) * inv_denom
+        
+        return (u >= 0) and (v >= 0) and (u + v < 1)
+
