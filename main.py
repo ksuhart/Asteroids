@@ -223,6 +223,8 @@ def main():
                         else:
                             score += 100
 
+                        break
+
             # Drawing
             #screen.fill("black")
             for obj in drawable:
