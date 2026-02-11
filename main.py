@@ -24,7 +24,8 @@ def main():
     print(f"Screen height: {SCREEN_HEIGHT}")
 
     game_state = "start"
-
+    dying_timer = 0
+    fade_alpha = 0
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     font = pygame.font.SysFont(None, 36)
@@ -157,6 +158,56 @@ def main():
             pygame.display.flip()
             continue
 
+
+        # ---------------- DYING STATE ----------------
+        if game_state == "dying":
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return
+
+            dying_timer -= dt
+            
+            # Continue updating and drawing the game
+            screen.fill("black")
+            starfield.update(dt)
+            starfield.draw(screen)
+            
+            updatable.update(dt)
+            for obj in drawable:
+                obj.draw(screen)
+
+            score_surface = font.render(f"Score: {score}", True, "white")
+            screen.blit(score_surface, (10, 10))
+
+            lives_surface = font.render(f"Lives: {lives}", True, "white")
+            screen.blit(lives_surface, (10, 40))
+
+            # Fade to black effect
+            if dying_timer < 7:  # Start fading after 3 seconds
+                fade_alpha = int(255 * (1 - dying_timer / 7))
+                fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                fade_surface.set_alpha(fade_alpha)
+                fade_surface.fill("black")
+                screen.blit(fade_surface, (0, 0))
+
+            pygame.display.flip()
+            dt = clock.tick(60) / 1000
+
+            # Transition to game over when timer expires
+            if dying_timer <= 0:
+                game_state = "game_over"
+            
+            continue
+
+
+
+
+
+
+
+
+
+
         # ---------------- PLAYING STATE ----------------
         if game_state == "playing":
             log_state()
@@ -191,6 +242,7 @@ def main():
             else:
 
             # Player–asteroid collision
+                asteroid_hit = False
                 for asteroid in asteroids:
                     if player.invincible_timer <= 0 and player.collides_with(asteroid):
                         log_event("player_hit")
@@ -199,9 +251,12 @@ def main():
                     # Ship explosion BEFORE respawn
 
                         ShipExplosion(player.position.x, player.position.y)
-
+                        
                         if lives <= 0:
-                            game_state = "game_over"
+                            game_state = "dying"
+                            dying_timer = 10.0
+                            player.kill()
+                            
                             break
 
                     # Remove asteroids too close to respawn point
@@ -218,11 +273,23 @@ def main():
                         respawn_timer = 2.0  # two second delay
                         player.kill()        # hide ship during explosion
 
-
+                        
                         break
+                if asteroid_hit:
+                    break
+
+                # Check if we're now in dying state and skip the rest
+                if game_state == "dying":
+                    pygame.display.flip()
+                    dt = clock.tick(60) / 1000
+                    continue  # ← Skip to next iteration of main loop
+
+
 
             # Shot–asteroid collision
-            for asteroid in asteroids:
+            asteroid_hit = False
+
+            for asteroid in list(asteroids):
                 for shot in shots:
                     if shot.collides_with(asteroid):
                         log_event("asteroid_shot")
@@ -242,7 +309,11 @@ def main():
                         else:
                             score += 100
 
+                        asteroid_hit = True
                         break
+                if asteroid_hit:
+                    break
+
 
             # Drawing
             #screen.fill("black")
