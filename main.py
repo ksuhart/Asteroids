@@ -1,6 +1,7 @@
 import pygame
 import math
 import colorsys
+import random
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from logger import log_state, log_event
 from player import Player
@@ -8,6 +9,7 @@ from asteroid import Asteroid
 from asteroidfield import AsteroidField
 from shot import Shot
 from explosion import Explosion
+from powerup import PowerUp
 import sys
 
 
@@ -29,6 +31,7 @@ def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     font = pygame.font.SysFont(None, 36)
+    small_font = pygame.font.SysFont(None, 24)
 
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
@@ -36,25 +39,26 @@ def main():
     asteroids = pygame.sprite.Group()
     shots = pygame.sprite.Group()
     particles = pygame.sprite.Group()
+    powerups = pygame.sprite.Group()
+    
     Player.containers = (updatable, drawable)
     Asteroid.containers = (asteroids, updatable, drawable)
     AsteroidField.containers = (updatable,)
     Shot.containers = (shots, updatable, drawable)
     Explosion.containers = (updatable, drawable)
+    PowerUp.containers = (powerups, updatable, drawable)
+    
     from ship_explosion import ShipExplosion
     ShipExplosion.containers = (particles, updatable, drawable)
     from shipparticle import ShipParticle
     ShipParticle.containers = (particles, updatable, drawable)
     from starfield import StarField
-    #StarField.containers = (updatable, drawable)
     starfield = StarField(SCREEN_WIDTH, SCREEN_HEIGHT, count=150)
 
     from particle import Particle
     from particle_explosion import ParticleExplosion
 
     Particle.containers = (particles, updatable, drawable)
-
-
 
     clock = pygame.time.Clock()
     dt = 0
@@ -64,8 +68,10 @@ def main():
     asteroid_field = AsteroidField()
     score = 0
     respawn_timer = 0
-
-
+    
+    # Weapon upgrade tracking
+    current_weapon = 'single'
+    weapon_timer = 0
 
     while True:
         # ---------------- START SCREEN ----------------
@@ -111,6 +117,18 @@ def main():
             if blink:
                 prompt = font.render("Press SPACE to Start", True, "white")
                 screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 300))
+                
+            # Add instructions
+            instructions = [
+                "Arrow Keys - Move",
+                "Space - Shoot",
+                "Collect powerups for weapon upgrades!"
+            ]
+            y_offset = 380
+            for instruction in instructions:
+                text = small_font.render(instruction, True, (150, 150, 150))
+                screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, y_offset))
+                y_offset += 30
     
             pygame.display.flip()
             continue
@@ -126,35 +144,35 @@ def main():
                     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
                     lives = 3
                     score = 0
+                    current_weapon = 'single'
+                    weapon_timer = 0
 
                     for a in asteroids:
                         a.kill()
                     for s in shots:
                         s.kill()
+                    for p in powerups:
+                        p.kill()
 
                     asteroid_field = AsteroidField()
-
-                    # Reset starfield
-                    from starfield import StarField
-                    #StarField.containers = (updatable, drawable)
                     starfield = StarField(SCREEN_WIDTH, SCREEN_HEIGHT, count=150)
-
-
 
                     game_state = "playing"
 
             screen.fill("black")
-            #starfield.update(dt)
             t = pygame.time.get_ticks() / 500
             starfield.twinkle(t)
             starfield.draw(screen)
             over = font.render("GAME OVER", True, "white")
             screen.blit(over, (SCREEN_WIDTH // 2 - over.get_width() // 2, 200))
+            
+            final_score = font.render(f"Final Score: {score}", True, "white")
+            screen.blit(final_score, (SCREEN_WIDTH // 2 - final_score.get_width() // 2, 250))
+            
             blink = (pygame.time.get_ticks() // 500) % 2 == 0
             if blink:
                 prompt = font.render("Press SPACE to Restart", True, "white")
-                #screen.blit(over, (SCREEN_WIDTH // 2 - over.get_width() // 2, 200))
-                screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 300))
+                screen.blit(prompt, (SCREEN_WIDTH // 2 - prompt.get_width() // 2, 350))
             pygame.display.flip()
             continue
 
@@ -167,7 +185,6 @@ def main():
 
             dying_timer -= dt
             
-            # Continue updating and drawing the game
             screen.fill("black")
             starfield.update(dt)
             starfield.draw(screen)
@@ -183,7 +200,7 @@ def main():
             screen.blit(lives_surface, (10, 40))
 
             # Fade to black effect
-            if dying_timer < 7:  # Start fading after 3 seconds
+            if dying_timer < 7:
                 fade_alpha = int(255 * (1 - dying_timer / 7))
                 fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
                 fade_surface.set_alpha(fade_alpha)
@@ -193,20 +210,10 @@ def main():
             pygame.display.flip()
             dt = clock.tick(60) / 1000
 
-            # Transition to game over when timer expires
             if dying_timer <= 0:
                 game_state = "game_over"
             
             continue
-
-
-
-
-
-
-
-
-
 
         # ---------------- PLAYING STATE ----------------
         if game_state == "playing":
@@ -223,32 +230,40 @@ def main():
             for sprite in drawable:
                 sprite.draw(screen)
 
+            # Update weapon timer
+            if weapon_timer > 0:
+                weapon_timer -= dt
+                if weapon_timer <= 0:
+                    current_weapon = 'single'
+                    weapon_timer = 0
+
             # Handle delayed respawn
             if respawn_timer > 0:
                 respawn_timer -= dt
                 if respawn_timer <= 0:
-
-                    # Remove any leftover player sprite
                     for p in updatable:
                         if isinstance(p, Player):
                             p.kill()
-
-                    # Create new player
-
                     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
                     player.make_invincible(2)
-
-                  # Skip collision logic until ship is fully respawned
+                    player.weapon_type = current_weapon
             else:
+                # Player–powerup collision
+                for powerup in list(powerups):
+                    if player.collides_with(powerup):
+                        current_weapon = powerup.type
+                        weapon_timer = powerup.duration
+                        player.weapon_type = current_weapon
+                        powerup.kill()
+                        score += 50
+                        log_event(f"powerup_collected_{powerup.type}")
 
-            # Player–asteroid collision
+                # Player–asteroid collision
                 asteroid_hit = False
                 for asteroid in asteroids:
                     if player.invincible_timer <= 0 and player.collides_with(asteroid):
                         log_event("player_hit")
                         lives -= 1
-
-                    # Ship explosion BEFORE respawn
 
                         ShipExplosion(player.position.x, player.position.y)
                         
@@ -256,52 +271,47 @@ def main():
                             game_state = "dying"
                             dying_timer = 10.0
                             player.kill()
-                            
                             break
 
-                    # Remove asteroids too close to respawn point
                         for a in asteroids:
                             if a.position.distance_to(
                                 pygame.Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
                             ) < 100:
                                 a.kill()
 
-                    # Respawn the player
-                    #respawn_player(player)                testing respawn delay code
-                    #player.make_invincible(2)
-
-                        respawn_timer = 2.0  # two second delay
-                        player.kill()        # hide ship during explosion
-
+                        respawn_timer = 2.0
+                        player.kill()
+                        
+                        # Reset weapon on death
+                        current_weapon = 'single'
+                        weapon_timer = 0
                         
                         break
                 if asteroid_hit:
                     break
 
-                # Check if we're now in dying state and skip the rest
                 if game_state == "dying":
                     pygame.display.flip()
                     dt = clock.tick(60) / 1000
-                    continue  # ← Skip to next iteration of main loop
-
-
+                    continue
 
             # Shot–asteroid collision
             asteroid_hit = False
-
             for asteroid in list(asteroids):
                 for shot in shots:
                     if shot.collides_with(asteroid):
                         log_event("asteroid_shot")
                         shot.kill()
 
-                        # Spawn explosion BEFORE splitting
                         pos = asteroid.position.copy()
                         ParticleExplosion(pos.x, pos.y)
 
+                        # Random chance to spawn powerup
+                        if random.random() < 0.15:  # 15% chance
+                            PowerUp(pos.x, pos.y)
+
                         asteroid.split()
 
-                        # add points (only when a shot actually hits)
                         if asteroid.radius > 40:
                             score += 20
                         elif asteroid.radius > 20:
@@ -314,17 +324,44 @@ def main():
                 if asteroid_hit:
                     break
 
-
             # Drawing
-            #screen.fill("black")
             for obj in drawable:
                 obj.draw(screen)
 
+            # UI
             score_surface = font.render(f"Score: {score}", True, "white")
             screen.blit(score_surface, (10, 10))
 
             lives_surface = font.render(f"Lives: {lives}", True, "white")
             screen.blit(lives_surface, (10, 40))
+            
+            # Weapon display
+            weapon_display_y = 70
+            if current_weapon != 'single':
+                weapon_config = PowerUp.TYPES[current_weapon]
+                weapon_text = f"Weapon: {current_weapon.upper()}"
+                weapon_surface = small_font.render(weapon_text, True, weapon_config['color'])
+                screen.blit(weapon_surface, (10, weapon_display_y))
+                
+                # Timer bar
+                bar_width = 100
+                bar_height = 8
+                bar_x = 10
+                bar_y = weapon_display_y + 25
+                
+                # Background
+                pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height))
+                
+                # Fill based on remaining time
+                fill_width = int(bar_width * (weapon_timer / weapon_config['duration']))
+                pygame.draw.rect(screen, weapon_config['color'], (bar_x, bar_y, fill_width, bar_height))
+                
+                # Border
+                pygame.draw.rect(screen, weapon_config['color'], (bar_x, bar_y, bar_width, bar_height), 1)
+                
+                # Time remaining
+                time_text = small_font.render(f"{weapon_timer:.1f}s", True, "white")
+                screen.blit(time_text, (bar_x + bar_width + 10, bar_y - 4))
 
             pygame.display.flip()
             dt = clock.tick(60) / 1000
