@@ -24,7 +24,7 @@ class Star(pygame.sprite.Sprite):
 
     def update(self, dt):
         self.y += self.speed * dt * 60  # consistent speed
-        if self.y > 800:  # off screen
+        if self.y > self.height:  # off screen
             self.y = 0
             self.x = random.randint(0, self.width)
 

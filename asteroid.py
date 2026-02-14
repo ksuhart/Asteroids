@@ -139,10 +139,14 @@ class Asteroid(CircleShape):
             self.position.y -= SCREEN_HEIGHT
 
     def split(self):
-        # Remove this asteroid
+#        print(f"[SPLIT START] Asteroid radius={self.radius} at ({self.position.x:.0f}, {self.position.y:.0f})")
+        
+        # Remove this asteroid FIRST
         self.kill()
+#        print(f"[SPLIT] Parent killed")
 
         if self.radius <= ASTEROID_MIN_RADIUS:
+#            print(f"[SPLIT] Too small to split (radius={self.radius} <= {ASTEROID_MIN_RADIUS})")
             return
 
         log_event("asteroid_split")
@@ -152,16 +156,12 @@ class Asteroid(CircleShape):
         vel2 = self.velocity.rotate(-angle)
 
         new_radius = self.radius - ASTEROID_MIN_RADIUS
+#        print(f"[SPLIT] Creating 2 children with radius={new_radius}")
 
         a1 = Asteroid(self.position.x, self.position.y, new_radius)
         a2 = Asteroid(self.position.x, self.position.y, new_radius)
 
         a1.velocity = vel1 * 1.2
         a2.velocity = vel2 * 1.2
-
-
-
-
-
-
-
+        
+#        print(f"[SPLIT COMPLETE] Created 2 asteroids with radius={new_radius}")

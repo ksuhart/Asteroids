@@ -2,6 +2,18 @@ import pygame
 import math
 import colorsys
 import random
+import sys
+
+# Initialize pygame FIRST to detect screen
+pygame.init()
+display_info = pygame.display.Info()
+
+# Update constants BEFORE importing game classes
+import constants
+constants.SCREEN_WIDTH = display_info.current_w
+constants.SCREEN_HEIGHT = display_info.current_h
+
+# NOW import everything else (they'll use the updated constants)
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from logger import log_state, log_event
 from player import Player
@@ -10,7 +22,6 @@ from asteroidfield import AsteroidField
 from shot import Shot
 from explosion import Explosion
 from powerup import PowerUp
-import sys
 
 
 def respawn_player(player):
@@ -21,15 +32,16 @@ def respawn_player(player):
 
 
 def main():
-    print("Starting Asteroids with pygame version: 2.6.1")
-    print(f"Screen width: {SCREEN_WIDTH}")
-    print(f"Screen height: {SCREEN_HEIGHT}")
-
     game_state = "start"
     dying_timer = 0
     fade_alpha = 0
-    pygame.init()
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    
+    # Screen dimensions already detected and constants updated at module level
+    print("Starting Asteroids with pygame version: 2.6.1")
+    print(f"Screen width: {SCREEN_WIDTH} (auto-detected)")
+    print(f"Screen height: {SCREEN_HEIGHT} (auto-detected)")
+    
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
     font = pygame.font.SysFont(None, 36)
     small_font = pygame.font.SysFont(None, 24)
 
@@ -88,29 +100,70 @@ def main():
             starfield.twinkle(t)
             starfield.draw(screen)
     
-            # Wave effect with pulsing brightness
+            # Letters on floating asteroids - BIGGER!
             title_text = "ASTEROIDS"
-            big_font = pygame.font.SysFont(None, 56)
-            letter_spacing = 35
+            big_font = pygame.font.SysFont(None, 110)  # HUGE font (was 72)
+            letter_spacing = 105  # Much wider spacing (was 70)
             total_width = len(title_text) * letter_spacing
             x_start = SCREEN_WIDTH // 2 - total_width // 2
     
-            # Pulsing brightness
-            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 400)
-            brightness = int(200 + 55 * pulse)
-            color = (brightness, brightness, brightness)
+            # Alternating cyan and magenta colors with pulsing
+            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 300)
+            
+            # Dramatic cyan and magenta
+            cyan_brightness = int(200 + 55 * pulse)
+            cyan = (0, cyan_brightness, cyan_brightness)
+            
+            magenta_brightness = int(200 + 55 * pulse)
+            magenta = (magenta_brightness, 0, magenta_brightness)
     
-            # Draw each letter with wave
+            # Pre-generate consistent asteroid shapes (seeded by letter index)
+            random.seed(42)  # Fixed seed for consistent shapes
+            asteroid_shapes = []
+            for i in range(len(title_text)):
+                points = []
+                num_points = 10  # More points for bigger asteroids
+                asteroid_radius = 50  # BIGGER asteroids (was 30)
+                for j in range(num_points):
+                    angle = (j / num_points) * 2 * math.pi
+                    # Fixed random variation per vertex
+                    variation = random.randint(-8, 8) if j % 2 == 0 else 0
+                    r = asteroid_radius + variation
+                    points.append((math.cos(angle) * r, math.sin(angle) * r))
+                asteroid_shapes.append(points)
+            random.seed()  # Reset seed
+    
+            # Draw each letter on an asteroid
             for i, letter in enumerate(title_text):
-                hue = ((pygame.time.get_ticks() / 20) + i * 40) % 360
-                rgb = colorsys.hsv_to_rgb(hue / 360, 0.8, 1.0)
-                color = (int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
-
-                wave = int(15 * math.sin(pygame.time.get_ticks() / 200 + i * 0.5))
-                letter_surface = big_font.render(letter, True, color)
+                # Alternate between cyan and magenta
+                color = cyan if i % 2 == 0 else magenta
+                
+                # Individual float and rotation for each asteroid
+                time_offset = i * 0.3
+                float_y = int(25 * math.sin(pygame.time.get_ticks() / 400 + time_offset))  # Bigger float (was 20)
+                rotation = math.sin(pygame.time.get_ticks() / 800 + time_offset) * 0.1
+                
                 x_pos = x_start + (i * letter_spacing)
-                y_pos = 180 + wave
-                screen.blit(letter_surface, (x_pos, y_pos))
+                y_pos = 180 + float_y  # Adjusted y position
+                
+                # Apply rotation to pre-generated shape
+                asteroid_points = []
+                for px, py in asteroid_shapes[i]:
+                    # Rotate point
+                    rotated_x = px * math.cos(rotation) - py * math.sin(rotation)
+                    rotated_y = px * math.sin(rotation) + py * math.cos(rotation)
+                    # Translate to position
+                    asteroid_points.append((x_pos + rotated_x, y_pos + rotated_y))
+                
+                # Draw filled asteroid (dark brown/gray)
+                pygame.draw.polygon(screen, (80, 60, 50), asteroid_points)
+                # Asteroid outline - thicker for bigger asteroids
+                pygame.draw.polygon(screen, (120, 100, 80), asteroid_points, 3)
+                
+                # Draw letter on top of asteroid
+                letter_surface = big_font.render(letter, True, color)
+                letter_rect = letter_surface.get_rect(center=(x_pos, y_pos))
+                screen.blit(letter_surface, letter_rect)
     
             # Blinking prompt
             blink = (pygame.time.get_ticks() // 500) % 2 == 0
@@ -225,6 +278,8 @@ def main():
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    return  # Exit game when ESC is pressed
 
             updatable.update(dt)
             for sprite in drawable:
@@ -236,6 +291,7 @@ def main():
                 if weapon_timer <= 0:
                     current_weapon = 'single'
                     weapon_timer = 0
+                    player.weapon_type = 'single'  # Update player's weapon type!
 
             # Handle delayed respawn
             if respawn_timer > 0:
@@ -296,33 +352,54 @@ def main():
                     continue
 
             # Shot–asteroid collision
-            asteroid_hit = False
-            for asteroid in list(asteroids):
-                for shot in shots:
+            # Process each shot-asteroid collision independently
+            for shot in list(shots):
+                hit_asteroid = None
+                for asteroid in list(asteroids):
                     if shot.collides_with(asteroid):
-                        log_event("asteroid_shot")
-                        shot.kill()
-
-                        pos = asteroid.position.copy()
-                        ParticleExplosion(pos.x, pos.y)
-
-                        # Random chance to spawn powerup
-                        if random.random() < 0.15:  # 15% chance
-                            PowerUp(pos.x, pos.y)
-
-                        asteroid.split()
-
-                        if asteroid.radius > 40:
-                            score += 20
-                        elif asteroid.radius > 20:
-                            score += 50
-                        else:
-                            score += 100
-
-                        asteroid_hit = True
+                        hit_asteroid = asteroid
                         break
-                if asteroid_hit:
-                    break
+                
+                if hit_asteroid:
+                    log_event("asteroid_shot")
+                    shot.kill()
+
+                    pos = hit_asteroid.position.copy()
+                    ParticleExplosion(pos.x, pos.y)
+
+                    # Add points BEFORE splitting (check size of current asteroid)
+                    if hit_asteroid.radius > 40:
+                        score += 20
+                    elif hit_asteroid.radius > 20:
+                        score += 50
+                    else:
+                        score += 100
+
+                    # Split the asteroid (this kills it and spawns smaller ones)
+                    hit_asteroid.split()
+
+                    # Only spawn powerups as UPGRADES, never downgrades
+                    spawn_chance = 0.10  # 10% base chance
+                    powerup_type = None
+                    
+                    if current_weapon == 'spread':
+                        # Already have best weapon - no more spawns!
+                        spawn_chance = 0.0
+                    elif current_weapon == 'triple':
+                        # Only allow spread upgrade
+                        powerup_type = 'spread'
+                    elif current_weapon == 'double':
+                        # Only allow triple or spread
+                        powerup_type = random.choice(['triple', 'spread'])
+                    else:  # single
+                        # Can get any upgrade
+                        powerup_type = random.choices(
+                            ['double', 'triple', 'spread'],
+                            weights=[50, 35, 15]  # Double most common, spread rarest
+                        )[0]
+                    
+                    if random.random() < spawn_chance and powerup_type:
+                        PowerUp(pos.x, pos.y, powerup_type)
 
             # Drawing
             for obj in drawable:
@@ -334,6 +411,11 @@ def main():
 
             lives_surface = font.render(f"Lives: {lives}", True, "white")
             screen.blit(lives_surface, (10, 40))
+            
+            # DEBUG: Asteroid count
+            asteroid_count = len(asteroids)
+            debug_surface = small_font.render(f"Asteroids: {asteroid_count}", True, "yellow")
+            screen.blit(debug_surface, (10, 110))
             
             # Weapon display
             weapon_display_y = 70
@@ -369,4 +451,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

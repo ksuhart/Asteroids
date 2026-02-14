@@ -8,9 +8,9 @@ class PowerUp(CircleShape):
     containers = ()
     
     TYPES = {
-        'double': {'color': (0, 150, 255), 'symbol': '==', 'duration': 10},
-        'triple': {'color': (255, 150, 0), 'symbol': '≡', 'duration': 12},
-        'spread': {'color': (255, 50, 255), 'symbol': '***', 'duration': 15},
+        'double': {'color': (0, 150, 255), 'symbol': '==', 'duration': 90},
+        'triple': {'color': (255, 150, 0), 'symbol': '≡', 'duration': 60},
+        'spread': {'color': (255, 50, 255), 'symbol': '***', 'duration': 30},
     }
     
     def __init__(self, x, y, powerup_type=None):
