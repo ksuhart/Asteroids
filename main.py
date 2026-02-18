@@ -413,9 +413,9 @@ def main():
             screen.blit(lives_surface, (10, 40))
             
             # DEBUG: Asteroid count
-            asteroid_count = len(asteroids)
-            debug_surface = small_font.render(f"Asteroids: {asteroid_count}", True, "yellow")
-            screen.blit(debug_surface, (10, 110))
+            #asteroid_count = len(asteroids)
+            #debug_surface = small_font.render(f"Asteroids: {asteroid_count}", True, "yellow")
+            #screen.blit(debug_surface, (10, 110))
             
             # Weapon display
             weapon_display_y = 70
